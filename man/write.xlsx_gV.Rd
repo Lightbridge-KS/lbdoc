@@ -35,7 +35,7 @@ Can input as \code{openxlsx::createStyle()} objects.}
 
 \item{borders}{Either "none" (default), "surrounding", "columns", "rows" or respective abbreviations. If "surrounding", a border is drawn around the data. If "rows", a surrounding border is drawn with a border around each row. If "columns", a surrounding border is drawn with a border between each column. If "all" all cell borders are drawn.}
 
-\item{freezePane_args}{list of arguments pass to \code{openxlsx::freezePane()}}
+\item{freezePane_args}{list of arguments pass to \code{openxlsx::freezePane()} (can be recycled to each tabs)}
 
 \item{writeData_args}{list of arguments pass to \code{openxlsx::writeData()}}
 }

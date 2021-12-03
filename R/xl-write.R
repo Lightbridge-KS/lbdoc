@@ -17,7 +17,7 @@
 #' @param headerStyle Custom style to apply to column names. If `NULL`, generate style automatically.
 #' Can input as `openxlsx::createStyle()` objects.
 #' @param borders Either "none" (default), "surrounding", "columns", "rows" or respective abbreviations. If "surrounding", a border is drawn around the data. If "rows", a surrounding border is drawn with a border around each row. If "columns", a surrounding border is drawn with a border between each column. If "all" all cell borders are drawn.
-#' @param freezePane_args list of arguments pass to `openxlsx::freezePane()`
+#' @param freezePane_args list of arguments pass to `openxlsx::freezePane()` (can be recycled to each tabs)
 #' @param writeData_args list of arguments pass to `openxlsx::writeData()`
 #'
 #' @return Workbook object (invisible)
@@ -47,6 +47,8 @@ write.xlsx_gV <- function(...,
   ls_ls_df <- rlang::list2(...)
   sheet_names <- names(ls_ls_df)
 
+  fp_args <- rep_list_elements(freezePane_args, length.out = length(ls_ls_df))
+
   wb <- openxlsx::createWorkbook()
 
   # Iterate over Tabs (Worksheets)
@@ -54,6 +56,8 @@ write.xlsx_gV <- function(...,
 
     # Take list of DF out
     ls_df <- ls_ls_df[[i]]
+    # Freez pane args at each tabs
+    fp_args_tab <- lapply(fp_args, `[`, i)
 
     # Header Style
     if (is.null(headerStyle)) {
@@ -80,7 +84,7 @@ write.xlsx_gV <- function(...,
     # Freez Panes
     rlang::exec(openxlsx::freezePane,
                 wb, sheet = i,
-                !!!freezePane_args
+                !!!fp_args_tab
     )
   }
 
