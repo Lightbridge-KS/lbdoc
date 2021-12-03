@@ -13,6 +13,7 @@ write.xlsx_gV(
   gapRow = 1,
   headerStyle = NULL,
   borders = "columns",
+  freezePane_args = list(),
   writeData_args = list()
 )
 }
@@ -34,10 +35,12 @@ Can input as \code{openxlsx::createStyle()} objects.}
 
 \item{borders}{Either "none" (default), "surrounding", "columns", "rows" or respective abbreviations. If "surrounding", a border is drawn around the data. If "rows", a surrounding border is drawn with a border around each row. If "columns", a surrounding border is drawn with a border between each column. If "all" all cell borders are drawn.}
 
-\item{writeData_args}{list of arguments pass to \code{openxlsx::writeData}}
+\item{freezePane_args}{list of arguments pass to \code{openxlsx::freezePane()}}
+
+\item{writeData_args}{list of arguments pass to \code{openxlsx::writeData()}}
 }
 \value{
-as in \code{openxlsx::saveWorkbook}
+Workbook object (invisible)
 }
 \description{
 Write a list of data frames to each worksheets (tabs) in which each data frames are vertically stacked.

@@ -17,9 +17,10 @@
 #' @param headerStyle Custom style to apply to column names. If `NULL`, generate style automatically.
 #' Can input as `openxlsx::createStyle()` objects.
 #' @param borders Either "none" (default), "surrounding", "columns", "rows" or respective abbreviations. If "surrounding", a border is drawn around the data. If "rows", a surrounding border is drawn with a border around each row. If "columns", a surrounding border is drawn with a border between each column. If "all" all cell borders are drawn.
-#' @param writeData_args list of arguments pass to `openxlsx::writeData`
+#' @param freezePane_args list of arguments pass to `openxlsx::freezePane()`
+#' @param writeData_args list of arguments pass to `openxlsx::writeData()`
 #'
-#' @return as in `openxlsx::saveWorkbook`
+#' @return Workbook object (invisible)
 #' @export
 #'
 #' @examples
@@ -39,6 +40,7 @@ write.xlsx_gV <- function(...,
                           gapRow = 1,
                           headerStyle = NULL,
                           borders = "columns",
+                          freezePane_args = list(),
                           writeData_args = list()
 ){
 
@@ -75,13 +77,19 @@ write.xlsx_gV <- function(...,
       borders = borders,
       !!!writeData_args
     )
+    # Freez Panes
+    rlang::exec(openxlsx::freezePane,
+                wb, sheet = i,
+                !!!freezePane_args
+    )
   }
 
   ## Save Files
   openxlsx::saveWorkbook(wb, file = file, overwrite = overwrite)
 
-}
+  return(invisible(wb))
 
+}
 # Write Data - Grid Vertical ----------------------------------------------
 
 
