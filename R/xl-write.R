@@ -117,7 +117,7 @@ write.xlsx_gV <- function(...,
 writeData_gridVertical <- function(wb, sheet, ls_df,
                                    startCol = 1,
                                    startRow = 1,
-                                   gapRow = 0,
+                                   gapRow = 1,
                                    headerStyle = NULL,
                                    borders = "columns",
                                    ...

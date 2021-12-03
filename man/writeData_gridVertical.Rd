@@ -10,7 +10,7 @@ writeData_gridVertical(
   ls_df,
   startCol = 1,
   startRow = 1,
-  gapRow = 0,
+  gapRow = 1,
   headerStyle = NULL,
   borders = "columns",
   ...
