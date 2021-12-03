@@ -3,3 +3,5 @@
 ^dev$
 ^my_data$
 ^LICENSE\.md$
+^my_R$
+^README\.Rmd$
