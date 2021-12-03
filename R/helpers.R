@@ -1,5 +1,32 @@
 
 
+# Replicate Elements in List ----------------------------------------------
+
+
+#' Replicate Elements of List to Specified Length
+#'
+#' @param ls list that have elements to replicated
+#' @param length.out amount of replication
+#'
+#' @return a list with equal length of elements
+#'
+rep_list_elements <- function(ls = list(), length.out = 1){
+
+  # capture list
+  if(length(ls) == 0L) return(NULL)
+
+  out <- vector("list", length(ls))
+  # Find where is NULL
+  null_lgls <- sapply(ls, is.null)
+  ## Assign NULL to where is NULL
+  out[null_lgls] <- NULL
+  ## Assign replicated values to the other location
+  out[!null_lgls] <- lapply(ls[!null_lgls], rep, length.out = length.out)
+
+  names(out) <- names(ls)
+  out
+}
+
 
 # Replicate Dot args ------------------------------------------------------
 
