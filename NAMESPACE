@@ -3,5 +3,6 @@
 export("%>%")
 export(write.xlsx_gV)
 export(writeData_gridVertical)
+export(write_custom_xlsx)
 importFrom(magrittr,"%>%")
 importFrom(rlang,":=")
