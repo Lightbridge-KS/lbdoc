@@ -10,12 +10,15 @@ Depends:
     R (>= 2.10)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.0
+RoxygenNote: 7.3.1
 Imports: 
     openxlsx,
     magrittr,
     rlang,
-    purrr
+    purrr,
+    stats,
+    dplyr,
+    stringr
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
