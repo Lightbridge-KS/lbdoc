@@ -1,0 +1,31 @@
+---
+title: "Open Excel Introduction"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file()) # Set WD to Root
+here::i_am("dev/write-custom-xl.Rmd")
+library(here)
+library(tibble)
+library(openxlsx)
+```
+
+
+```{r}
+usethis::use_r("write_custom_xlsx")
+```
+
+## Test Manually
+
+```{r}
+tbl <- tibble(x = letters[1:2],
+              long_name_column_width = 1:2, 
+              another_long_name = 3:4)
+tbl
+```
+
+```{r}
+lbdoc::write_custom_xlsx(tbl, here("my_data/excel/colWidth_auto_tbl.xlsx"))
+```
+

@@ -1,0 +1,92 @@
+---
+title: "Excel Style"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file()) # Set WD to Root
+here::i_am("dev/openxl-style.Rmd")
+library(tidyverse)
+library(here)
+library(openxlsx)
+```
+
+```{r}
+usethis::use_r("xl-style")
+```
+
+
+### Header Style
+
+
+```{r}
+hs1 <- createStyle(fontColour = NULL, fgFill = "#cfe2f3",
+                   halign = "center", valign = "center", textDecoration = "Bold",
+                   border = "TopBottomLeftRight")
+
+hs2 <- createStyle(fontColour = NULL, fgFill = "#d9ead3",
+                   halign = "center", valign = "center", textDecoration = "Bold",
+                   border = "TopBottomLeftRight")
+
+hs1
+
+```
+
+
+
+```{r createHeaderStyles}
+createHeaderStyles <- function(n = 1,
+                              fgFills = NULL, # Default
+                              halign = "center",
+                              valign = "center",
+                              textDecoration = "Bold",
+                              border = "TopBottomLeftRight",
+                              ...
+                              ){
+  
+  ## Default Foreground Fills
+  if (is.null(fgFills)) {
+    fgFills <- c("#cfe2f3", "#d9ead3", "#fce5cd", "#f4cccc", "#fff2cc", "#d0e0e3")
+  }
+  fgFills  <- rep(fgFills, length.out = n)
+  halign <- rep(halign, length.out = n)
+  valign <- rep(valign, length.out = n)
+  textDecoration <- rep(textDecoration, length.out = n)
+  border <- rep(border, length.out = n)
+  # Dot Args
+  args_ls_long <- rep_args_len(..., length.out = n)
+  
+  out <- vector("list", n)
+  
+  for (i in 1:n) {
+    
+    args_ls <- lapply(args_ls_long, `[`, i)
+    
+    out[[i]] <- rlang::exec(openxlsx::createStyle,
+      # Args
+      fgFill = fgFills[[i]],
+      halign = halign[[i]],
+      valign = valign[[i]],
+      textDecoration = textDecoration[[i]],
+      border = border[[i]],
+      !!!args_ls
+    )
+  }
+  
+  out
+  
+}
+
+createHeaderStyles(2, halign = c("left", "right"))
+createHeaderStyles(2, halign = c("left", "right"), fontName = c("Calibri"))
+```
+
+
+
+
+
+
+
+
+
+

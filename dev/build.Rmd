@@ -1,0 +1,260 @@
+---
+title: "Build"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file()) # Set WD to Root
+here::i_am("dev/build.Rmd")
+library(here)
+
+```
+
+## Create Folder
+
+```{r}
+fs::dir_create("my_data")
+fs::dir_create("my_R")
+```
+
+
+# 1. Git & Build
+
+```{r use_git}
+usethis::use_git()
+```
+
+## Git Ignore
+
+```{r use_git_ignore}
+usethis::use_git_ignore("dev/")
+usethis::use_git_ignore("my_data/")
+usethis::use_git_ignore("my_R/")
+# usethis::use_git_ignore("testdata/") # ignore private Test Data in `inst/testdata`
+```
+
+## Build Ignore
+
+```{r use_build_ignore}
+usethis::use_build_ignore("dev")
+usethis::use_build_ignore("my_data")
+usethis::use_build_ignore("my_R")
+```
+
+# 2. DOCs
+
+
+## DESCRIPTION
+
+```{r DESCRIPTION}
+usethis::use_description(
+fields = list(
+  Title = "My Package for Office Document",
+  `Authors@R` = 'person("Kittipos", "Sirivongrungson", 
+                        email = "ki11ip0.s.a.s@gmail.com", 
+                        role = c("aut", "cre"))',
+  Description = "This package contain custom functions that manipulate office document files such as Excel, MS Word, MS Powerpoint, etc.",
+  License = "MIT + file LICENSE",
+  Depends = "R (>= 2.10)"
+  )
+)
+```
+
+
+## LICENSE
+
+```{r LICENSE}
+usethis::use_mit_license()
+```
+
+## README
+
+```{r README}
+usethis::use_readme_rmd()
+ usethis::use_lifecycle_badge("experimental")
+```
+
+
+## Template
+
+```{r rmd_template}
+# usethis::use_rmarkdown_template(
+#   template_name = "name",
+#   template_description = "description"
+#   )
+```
+
+
+# 3. Dependencies
+
+## Import
+
+```{r import}
+usethis::use_pipe()
+usethis::use_package("rlang")
+usethis::use_package("purrr")
+usethis::use_package("dplyr")
+usethis::use_package("purrr")
+usethis::use_package("stringr")
+
+usethis::use_package("openxlsx")
+```
+
+
+## Import from
+
+```{r import_from}
+usethis::use_import_from("rlang", ":=") # Must have if use rlang
+usethis::use_import_from("stats", "na.omit")
+```
+
+## Global variables
+
+
+```{r globalVariables}
+# Put this in  R/globals.R
+# utils::globalVariables(c("var1"))
+usethis::use_r("globals.R")
+```
+
+# 4. Tests
+
+```{r testthat}
+usethis::use_testthat()
+```
+
+Helper Functions for test -> create `testthat/helper.R` manually
+
+```{r}
+fs::file_create(here("tests/testthat/helper.R"))
+```
+
+
+If you want to use data for testing, put data file(s) in `inst/testdata`.
+The path to this data can be obtained by `system.file("testdata",...,package="my_package")`.
+
+For example, If I put `cars.csv` in `inst/testdata`, to read into R use this command `read.csv(system.file("testdata","cars.csv", package="my_package"))`.
+
+[ref](https://stackoverflow.com/questions/32328802/where-should-i-put-data-for-automated-tests-with-testthat)
+
+
+**Path to testdata folder**: put this in `testthat/test-helper.R`:
+
+```{r path_testdata}
+path_testdata <- function(..., package = "pkg_name") {
+
+  system.file("testdata", ... ,package = package)
+
+}
+```
+
+
+# 5. Data
+
+## Exported Data
+
+-   Run: `usethis::use_data(export_df)`
+
+To store exported data in `data/`. 
+Each file in this directory should be `.rda` file containing a single object.
+
+-   Run: `usethis::use_data_raw("export_df")`
+
+To store code that used for data preparation in `data-raw/` 
+
+
+```{r export_data}
+# usethis::use_data(export_df1,export_df2) 
+
+# usethis::use_data_raw("export_df1") # Code to Prepare data
+# usethis::use_data_raw("export_df2") # Code to Prepare data
+```
+
+**How to Document a Data set**
+
+Document the name of the data in `R/` as roxygen2:
+
+```{r data_doc_example}
+#' Prices of 50,000 round cut diamonds.
+#'
+#' A dataset containing the prices and other attributes of almost 54,000
+#' diamonds.
+#'
+#' @format A data frame with 53940 rows and 10 variables:
+#' \describe{
+#'   \item{price}{price, in US dollars}
+#'   \item{carat}{weight of the diamond, in carats}
+#'   ...
+#' }
+#' @source \url{http://www.diamondse.info/}
+"diamonds"
+```
+
+
+
+
+## Internal Data
+
+Save all of the objects for internal use in `R/sysdata.rda.`
+Usually, they don’t need to be documented.
+
+```{r internal_data}
+# usethis::use_data(df1, df2, df3, internal = TRUE)
+```
+
+## Raw Data
+
+If you want to show examples of loading/parsing raw data, put the original files in `inst/extdata`.
+
+```{r}
+# fs::dir_create("inst/extdata")
+```
+
+**Function: Path to Raw Data**
+
+So that User can easy access path to raw data
+
+```{r}
+# usethis::use_r("example") 
+```
+
+```{r PKG_example}
+#' Get path to PKG example
+#'
+#' PKG comes bundled with a number of sample files in its `inst/extdata`
+#' directory. This function make them easy to access
+#'
+#' @param file Name of file. If `NULL`, the example files will be listed.
+#' @export
+#' @examples
+#' library(PKG)
+#' PKG_example()
+#' PKG_example("file.csv")
+PKG_example <- function(file = NULL) {
+  
+  if (is.null(file)) {
+    dir(system.file("extdata", package = "PKG"))
+    
+  } else {
+    system.file("extdata", file, package = "PKG", mustWork = TRUE)
+  }
+  
+}
+
+PKG_example()
+PKG_example("file.csv")
+```
+
+
+**Write: Raw Data**
+
+```{r }
+# raw_data %>% readr::write_csv(here("inst/extdata/file.csv"))
+```
+
+
+
+
+
+

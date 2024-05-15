@@ -1,0 +1,92 @@
+---
+title: "Helper Funtions"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file()) # Set WD to Root
+here::i_am("dev/helpers.Rmd")
+library(tidyverse)
+library(here)
+library(testthat)
+```
+
+```{r}
+usethis::use_r("helpers")
+usethis::use_test("helpers")
+```
+
+### Helper: Replicate elements of List
+
+```{r rep_list_elements}
+rep_list_elements <- function(ls = list(), length.out = 1){
+  
+  # capture list
+  if(length(ls) == 0L) return(NULL)
+  
+  out <- vector("list", length(ls))
+  # Find where is NULL
+  null_lgls <- sapply(ls, is.null)
+  ## Assign NULL to where is NULL
+  out[null_lgls] <- NULL 
+  ## Assign replicated values to the other location
+  out[!null_lgls] <- lapply(ls[!null_lgls], rep, length.out = length.out)
+  
+  names(out) <- names(ls) 
+  out
+}
+
+rep_list_elements()
+
+rep_list_elements(list(a = 1:2, b = "a", NULL, NA), length.out = 3)
+```
+
+
+### Helper: Capture Args with Replicate Len
+
+```{r rep_args_len}
+rep_args_len <- function(..., length.out = 1){
+  
+  # capture dot
+  ls <- rlang::list2(...)
+  if(length(ls) == 0L) return(NULL)
+  
+  out <- vector("list", length(ls))
+  # Find where is NULL
+  null_lgls <- sapply(ls, is.null)
+  ## Assign NULL to where is NULL
+  out[null_lgls] <- NULL 
+  ## Assign replicated values to the other location
+  out[!null_lgls] <- lapply(ls[!null_lgls], rep, length.out = length.out)
+  
+  names(out) <- names(ls) 
+  out
+}
+
+rep_args_len()
+rep_args_len("A", length.out = 0)
+rep_args_len(1, length.out = 2)
+
+rep_args_len(a = 1:2, length.out = 2)
+
+rep_args_len(length.out = 5,
+             a = 1, b = 1:5, c = 1:2, d = NULL,  NULL, NA) 
+```
+ 
+#### Test: rep_args_len()
+
+```{r test rep_args_len()}
+test_that("test rep_args_len()",{
+  
+  # No args -> NULL
+  expect_null(rep_args_len())
+  # Length out = 0; return zero length vector
+  expect_identical(rep_args_len(1, length.out = 0), list(numeric(0)))
+  expect_identical(rep_args_len("a", length.out = 0), list(character(0)))
+  
+  # Replicate is OK
+  expect_identical(rep_args_len(a = 1:2, length.out = 4), list(a = c(1:2, 1:2)))
+  
+})
+```
+

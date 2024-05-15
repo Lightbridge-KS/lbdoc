@@ -1,0 +1,409 @@
+---
+title: "Write to Specified Location"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file()) # Set WD to Root
+here::i_am("dev/openxl-writeLoc.Rmd")
+library(tidyverse)
+library(here)
+library(openxlsx)
+source(here("my_R/mkdata.R"))
+library(testthat)
+```
+
+### Script
+
+```{r}
+usethis::use_r("xl-loc")
+usethis::use_r("xl-write")
+```
+
+
+
+### Write Excel Grid Vertical
+
+write.xlsx_gV
+
+args: 
+`...` = list of DFs
+file = file
+asTable
+overwrite
+writeData_args
+
+```{r}
+lbdoc::write.xlsx_gV(tab1 = list(iris[1:5, ], mtcars[1:5, ]),
+                     tab2 = list(Orange[1:3, ], iris[1:2, ]),
+                     file = path_excel("Excel_VGridTest1.xlsx"), overwrite = T
+                     #writeData_args = list(borderColour = "black"),
+                     )
+```
+
+
+
+```{r write.xlsx_gV}
+write.xlsx_gV <- function(..., 
+                          file,
+                          overwrite = FALSE,
+                          startCol = 1,
+                          startRow = 1, 
+                          gapRow = 1,
+                          headerStyle = NULL,
+                          borders = "columns",
+                          freezePane_args = list(),
+                          writeData_args = list()
+                          ){
+  
+  ls_ls_df <- rlang::list2(...)
+  sheet_names <- names(ls_ls_df)
+  
+  fp_args <- rep_list_elements(freezePane_args, length.out = length(ls_ls_df))
+  
+  wb <- openxlsx::createWorkbook()
+  
+  # Iterate over Tabs (Worksheets)
+  for (i in seq_along(ls_ls_df)) {
+    
+    # Take list of DF out
+    ls_df <- ls_ls_df[[i]]
+    # Freez pane args at each tabs
+    fp_args_tab <- lapply(fp_args, `[`, i)
+    
+    # Header Style
+    if (is.null(headerStyle)) {
+        # Default HS
+        hs <- createHeaderStyles(n = length(ls_df))
+    }else{
+        hs <- headerStyle
+    }
+    # Add Tabs
+    openxlsx::addWorksheet(wb, sheetName = sheet_names[[i]], gridLines = TRUE)
+    # Write Grid Data in each tabs
+    rlang::exec(
+      # FUN
+      writeData_gridVertical,
+      # Args
+      wb,
+      sheet = i, ls_df = ls_df,
+      startRow = startRow, startCol = startCol,
+      gapRow = gapRow,
+      headerStyle = hs,
+      borders = borders,
+      !!!writeData_args
+    )
+    # Freez Panes
+    rlang::exec(openxlsx::freezePane,
+                wb, sheet = i,
+                !!!fp_args_tab
+                )
+  }
+  
+  ## Save Files
+  openxlsx::saveWorkbook(wb, file = file, overwrite = overwrite)
+  
+  return(invisible(wb))
+
+}
+```
+
+
+
+Testing
+
+```{r}
+wb1 <- write.xlsx_gV(tab1 = ls_df12, 
+              tab2 = list(iris, mtcars),
+              file = path_excel("Excel_VertialGrid1.xlsx"), 
+              headerStyle = NULL, 
+              overwrite = TRUE, 
+              freezePane_args = list(firstActiveRow = 2:3))
+
+openXL(wb1)
+
+```
+
+```{r}
+
+wb2 <- write.xlsx_gV(tab1 = ls_df12, file = path_excel("Excel_VertialGrid2.xlsx"), 
+              headerStyle = list(hs1, hs2, hs1), overwrite = TRUE, 
+              writeData_args = list(borderColour = "red"))
+
+openXL(wb2)
+```
+
+
+```{r}
+wb <- createWorkbook()
+
+addWorksheet(wb, sheetName = "First", gridLines = TRUE)
+addWorksheet(wb, sheetName = "Second", gridLines = TRUE)
+
+writeData_gridVertical(wb, sheet = 1, ls_df = ls_df12, startRow = 1, gapRow = 1, 
+                       headerStyle = list(hs1, hs2, hs2), borders = "columns")
+
+writeData_gridVertical(wb, sheet = 2, ls_df = ls_df12, startRow = 1, gapRow = 1, 
+                       headerStyle = hs1)
+
+saveWorkbook(wb, path_excel("Excel_chLoc3.xlsx"), overwrite = TRUE)
+openXL(wb)
+```
+
+
+
+
+### Write Data Grid Vertical
+
+Vary: `x`, `startCol`, `startRow`, `headerStyle`
+
+
+```{r writeData_gridVertical}
+writeData_gridVertical <- function(wb, sheet, ls_df, 
+                                   startCol = 1,
+                                   startRow = 1, 
+                                   gapRow = 1,
+                                   headerStyle = NULL,
+                                   borders = "columns",
+                                   ...
+                                   ) {
+  
+  # Vector of Start Rows
+  start_rows <- get_startRow_stack(ls_df, startRow =  startRow, gapRow = gapRow)
+  ## Rep Args
+  args_ls_long <- rep_args_len(..., length.out = length(ls_df))
+  borders <- rep(borders, length.out = length(ls_df))
+  
+  for (i in seq_along(ls_df)) {
+    # Header Styles
+    ## Check if it is list of Style objects
+    is_ls_hs <- is.list(headerStyle) && purrr::every(headerStyle, ~ inherits(.x, "Style"))
+      
+    if(is.null(headerStyle)){
+      hs <- createHeaderStyles(n = length(ls_df))[[i]]
+    } else if (is_ls_hs) {
+      # If supply list of header style; supply them correspondingly
+      if (length(headerStyle) != length(ls_df)) stop("Length of list of headerStyle must equals to data frames.")
+      hs <- headerStyle[[i]]
+    } else if (inherits(headerStyle, "Style")) {
+      # If not, style the same
+      hs <- headerStyle
+    } else {
+      stop("`headerStyle` must be a 'Style' object.")
+    }
+    # Dots
+    args_ls <- lapply(args_ls_long, `[`, i)
+    
+    # Execute Write !!
+    rlang::exec(openxlsx::writeData,
+                # Args
+                wb,
+                sheet = sheet, x = ls_df[[i]],
+                startRow = start_rows[[i]], startCol = startCol, headerStyle = hs,
+                borders = borders[[i]],
+                !!!args_ls
+    )
+  }
+  
+}
+```
+
+Test: `writeData_gridVertical`
+
+```{r}
+wb <- createWorkbook()
+
+addWorksheet(wb, sheetName = "First", gridLines = TRUE)
+
+writeData_gridVertical(wb, sheet = 1, ls_df = ls_df12, startRow = 1, gapRow = 1, 
+                       headerStyle = NULL, borders = c("rows","columns"), 
+                       borderColour =c("red", "blue"))
+
+saveWorkbook(wb, path_excel("Excel_chLoc2.xlsx"), overwrite = TRUE)
+openXL(wb)
+
+#debugonce("writeData_gridVertical")
+```
+
+
+#### Howto: write Data Grid Vertical
+
+```{r}
+wb <- createWorkbook()
+
+addWorksheet(wb, sheetName = "First", gridLines = TRUE)
+
+for (i in 1:3) {
+  
+  writeData(wb, sheet = 1, x = ls_df12[[i]], 
+            startRow = get_startRow_stack(ls_df12, start = 1, gap = 1)[[i]],
+            startCol = 1,
+            headerStyle = NULL
+            )
+}
+
+
+  freezePane(wb, sheet = 1, firstActiveRow = 5, firstActiveCol = 3)
+
+
+
+saveWorkbook(wb, path_excel("Excel_chLoc2.xlsx"), overwrite = TRUE)
+openXL(wb)
+```
+
+
+```{r}
+hs1 %>% class()
+hs1 %>% is.list()
+hs1 %>% inherits("Style")
+list(hs1, hs2) %>% every(~inherits(.x, "Style"))
+```
+
+ 
+
+
+
+
+In details:
+
+```{r}
+wb <- createWorkbook()
+
+addWorksheet(wb, sheetName = "First", gridLines = TRUE)
+
+writeData(wb, sheet = 1, 
+          x = data.frame(Name = c("a","b", "c"), Val = c(1,2, 3)), 
+          startCol = 1, startRow = 1, headerStyle = hs1)
+
+writeData(wb, sheet = 1, x = iris, 
+          startCol = 1, startRow = 5, headerStyle = hs2)
+
+
+saveWorkbook(wb, path_excel("Excel_chLoc1.xlsx"), overwrite = TRUE)
+openXL(wb)
+```
+
+
+
+
+
+
+
+
+### Get Rows Location 
+
+Get start row location of each df to write
+
+Input: `ls_df`, `gap`
+Output: named numeric vector
+
+
+```{r get_startRow_stack}
+get_startRow_stack <- function(ls_df, startRow = 1, gapRow = 0) {
+  
+  df_nms <- names(ls_df)
+  ## Height of each DF
+  ht_df <- sapply(ls_df, nrow) + 1
+  
+  out <- numeric(length(ls_df))
+  for (i in seq_along(ls_df)) {
+    ## First DF
+    if(i == 1L){
+      out[[1]] <- startRow
+      next
+    }
+    ## Start Row of DFn
+    ### Start point + sum of height of last dfs + number of gaps
+    out[[i]] <-  startRow + sum(ht_df[1:(i - 1)]) + (i - 1)*gapRow
+  }
+  names(out) <- df_nms
+  out
+}
+
+get_startRow_stack(ls_df123)
+get_startRow_stack(ls_df12, gapRow = 1)
+get_startRow_stack(ls_df12, startRow = 2, gapRow = 1)
+```
+
+#### Test: get_startRow_stack()
+
+```{r}
+test_that("get_startRow_stack()",{
+  expect_equal(get_startRow_stack(ls_df123), c(DF1 = 1,DF2 = 4,DF3 = 8))
+})
+```
+
+
+
+#### Howto: Get Start Rows Location
+
+
+
+```{r}
+df1 <- data.frame(A = letters[1:2], B = c(1:2))
+df2 <- data.frame(C = letters[3:5], D = LETTERS[3:5], E = 3:5)
+df3 <- data.frame(G = letters[1:2], H = c(1:2))
+
+ls_df123 <- list(DF1 = df1, DF2 = df2, DF3 = df3)
+ls_df123
+```
+
+
+
+
+```{r}
+start <- 1
+
+gap <- 1
+## Height of DF
+ht_df <- sapply(ls_df12, nrow) + 1
+
+## Start Row of DF1
+start
+
+## Start Row of DF2
+start + ht_df[[1]] + 1*gap
+
+## Start Row of DF3
+start + sum(ht_df[1:2]) + 2*gap
+```
+
+
+
+
+
+
+
+### How To Capture Dot
+
+```{r}
+capture_dot <- function(...) {
+  ls <- rlang::list2(...)
+  ls
+  
+}
+
+capture_dot(a = 1, b = 2, 3, NULL) 
+
+capture_dot(i = iris, !!!list(a = Orange), mtcars) %>% names()
+```
+
+### Others
+#### Try Write Vector
+
+```{r}
+l <- list(a = "A", b = "B")
+v <- c(a = "A", b = "B")
+
+wb <- createWorkbook()
+
+addWorksheet(wb, sheetName = "First", gridLines = TRUE)
+
+
+writeData(wb, sheet = 1, x = v, startCol = 1, startRow = 1)
+
+saveWorkbook(wb, path_excel("Excel_vctr.xlsx"), overwrite = TRUE)
+openXL(wb)
+```
+
+

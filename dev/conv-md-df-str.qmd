@@ -1,0 +1,364 @@
+---
+title: "Convert Markdown to hierarchical structured DF"
+format: html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+here::i_am("dev/conv-md-df-str.qmd")
+library(here)
+library(tidyverse)
+```
+
+```{r}
+usethis::use_r("md_to_df_str")
+```
+
+
+## Read Data
+
+```{r}
+lines_test3 <- readLines(here("my_data/markdown/test-3.md"), warn = FALSE)
+lines_test3
+```
+## Main: Read markdown to Structured DF
+
+```{r read_md_to_df_str}
+read_md_to_df_str <- function(file,
+                              summarize = TRUE,
+                              collapse = ", ",
+                              readLines_args = list()) {
+  # Use do.call to pass additional arguments to readLines
+  chr <- do.call(readLines, c(list(file), readLines_args, warn = FALSE))
+  
+  # Pass the character vector to parse_md_to_df_str()
+  df <- parse_md_to_df_str(chr, summarize = summarize, collapse = collapse)
+  df
+}
+
+read_md_to_df_str(here("my_data/markdown/test-3.md"))
+```
+
+- `file`: Either a path to a file, a connection, or literal data (either a single string or a raw vector).
+- `summarize` and `collapse` are the same as in `parse_md_to_df_str()`
+- `readLines_args`: A list of optional argument to pass into `readLines()`
+
+
+## Main: Parsed markdown to Structured DF
+
+```{r parse_md_to_df_str}
+parse_md_to_df_str <- function(chr, summarize = TRUE, collapse = ", ") {
+  h_lvs <- detect_h_levels_unique(chr)
+  names(h_lvs) <- paste0("h", h_lvs)
+  df_h <- purrr::map_dfc(h_lvs, ~rep_headings(chr, .x))
+  df <- dplyr::bind_cols(line_num = seq_along(chr), 
+                         df_h,
+                         content_body = extract_body_content_vec(chr))
+  if(!summarize) return(df)
+  df |> 
+    dplyr::group_by(!!!dplyr::syms(names(h_lvs))) |> 
+    dplyr::summarise(content_body = paste(na.omit(dplyr::na_if(content_body, "")), 
+                                          collapse  = collapse), .groups = "drop")
+    
+}
+
+parse_md_to_df_str(lines_test3, summarize = F)
+parse_md_to_df_str(lines_test3, summarize = T, collapse = ", ")
+```
+
+
+```{r}
+lines_test3_h_lvs <- detect_h_levels_unique(lines_test3)
+
+names(lines_test3_h_lvs) <- paste0("h", lines_test3_h_lvs)
+
+map_dfc(lines_test3_h_lvs, 
+        ~rep_headings(lines_test3, .x))
+```
+
+## Helper: Extract Body Content
+
+```{r extract_body_content_vec}
+extract_body_content_vec <- function(chr) {
+  out <- character(length(chr))
+  is_body <- detect_h_level_lines(chr) == 0
+  out[is_body] <- chr[is_body]
+  out[!is_body] <- ""
+  out
+}
+extract_body_content_vec(lines_test3)
+```
+
+
+```{r}
+lines_test3[detect_h_level_lines(lines_test3) == 0]
+```
+
+
+## Helper: Replicate Heading
+
+```{r rep_headings}
+rep_headings <- function(chr, h = 1) {
+  df <- data.frame(
+    line_num = seq_along(chr),
+    h_lvs = detect_h_level_lines(chr),
+    content = chr
+  )
+  h_content <- df$content[df$h_lvs == h]
+  h_start_loc <- df$line_num[df$h_lvs == h]
+  h_end_loc <- find_end_loc_by_heading(df$h_lvs, h)
+  out <- rep_each_start_end(h_content, h_start_loc, h_end_loc, length(chr))
+  out <- dplyr::na_if(trimws(stringr::str_remove(out, "^#+")), "")
+  out
+}
+
+rep_headings(lines_test3, 1)
+rep_headings(lines_test3, 2)
+```
+
+```{r}
+lines_test3_df <- data.frame(
+  line_num = seq_along(lines_test3),
+  h_lvs = detect_h_level_lines(lines_test3),
+  content = lines_test3
+)
+lines_test3_df 
+```
+
+
+## Helper: Detect Heading level by line
+
+```{r detect_h_level_lines}
+detect_h_level_lines <- function(chr) {
+  lv <- nchar(stringr::str_extract(chr, "^#+"))
+  out <- ifelse(is.na(lv), 0, lv)
+  out
+}
+detect_h_level_lines(c("### Topic 1.1.1 ##", "Topic #", "#dd", " # ss"))
+```
+
+
+```{r}
+c("### Topic 1.1.1 ##") |> str_extract("^#+") |> nchar()
+c("Topic 1.1.1 ##") |> str_extract("^#+") |> nchar()
+
+c("Topic 1.1.1 ##", "## ss") |> str_extract("^#+") |> nchar()
+```
+
+
+
+#### H1
+
+
+```{r}
+# Content
+(lines_test3_h1_content <- lines_test3_df |> filter(h_lvs == 1) |> pull(content))
+lines_test3_df$content[lines_test3_df$h_lvs == 1]
+# Start Loc
+(lines_test3_h1_start_loc <- lines_test3_df |> filter(h_lvs == 1) |> pull(line_num))
+lines_test3_df$line_num[lines_test3_df$h_lvs == 1]
+
+# End Loc
+(lines_test3_h1_end_loc <- find_end_loc_by_heading(lines_test3_df$h_lvs, 1))
+```
+
+
+```{r}
+# H1 Vector
+rep_each_start_end(lines_test3_h1_content, 
+                   lines_test3_h1_start_loc, lines_test3_h1_end_loc)
+```
+
+
+
+## Helper: Detect Headings Levels
+
+```{r detect_h_levels_unique}
+detect_h_levels_unique <- function(chr){
+  
+  h_lines <- stringr::str_extract(chr, "^#+")
+  h_lvs <- stringr::str_count(h_lines, "#")
+  h_lvs_unique <- sort(unique(na.omit(h_lvs)))
+  h_lvs_unique
+  
+}
+
+detect_h_levels_unique(lines_test3) 
+```
+
+
+```{r}
+str_extract("## Hi # there #" , "^#+") |> str_count("#")
+str_extract("Hi # there #"  , "^#+") |> str_count("#")
+str_extract(NA  , "^#+") |> str_count("#")
+```
+
+
+
+
+
+## Helper: Replicate Vector
+
+Replicate Vector with starting and ending location
+
+```{r rep_each_start_end}
+rep_each_start_end <- function(x, start, end, length.out=NULL) {
+  
+  out <- character(length = max(end))
+  for (i in seq_along(x)) {
+    content <- rep(x[i], end[i] - start[i] + 1)
+    loc <- start[i]:end[i]
+    out[loc] <- content
+  }
+  if(is.null(length.out)) return(out)
+  ## Add NA to give final vector length as `length.out`
+  out <- c(out, rep(NA, length.out - length(out)))
+  out
+}
+
+rep_each_start_end(c("A", "B", "C", "D"), c(1, 4, 8, 12), c(3, 7, 9, 15))
+rep_each_start_end(c("!", "*"), c(1, 3), c(2, 5), 5)
+```
+
+```{r}
+rep(NA, 0)
+```
+
+
+### HowTo 
+
+```{r}
+x1 <- c("A", "B", "C", "D")
+x1_start_loc <- c(1, 4, 8, 12)
+x1_end_loc <- c(3, 7, 9, 15)
+
+## Content
+rep(x1[1], x1_end_loc[1] - x1_start_loc[1] + 1)
+rep(x1[2], x1_end_loc[2] - x1_start_loc[2] + 1)
+rep(x1[3], x1_end_loc[3] - x1_start_loc[3] + 1)
+rep(x1[4], x1_end_loc[4] - x1_start_loc[4] + 1)
+
+## Location
+x1_start_loc[1]:x1_end_loc[1]
+x1_start_loc[2]:x1_end_loc[2]
+x1_start_loc[3]:x1_end_loc[3]
+## 10, 11
+x1_start_loc[4]:x1_end_loc[4]
+
+
+x1_out <- character(length = max(x1_end_loc))
+x1_out
+
+
+for (i in seq_along(x1)) {
+  content <- rep(x1[i], x1_end_loc[i] - x1_start_loc[i] + 1)
+  loc <- x1_start_loc[i]:x1_end_loc[i]
+  x1_out[loc] <- content
+}
+
+x1_out
+```
+
+
+
+
+## Helper: Find Ending Location by Headings
+
+```{r}
+x2 <- c(1, 0, 3, 0, 1, 0, 2, 0, 3, 1, 0, 2, 0, 0)
+x2
+```
+
+```{r find_end_loc_by_heading}
+find_end_loc_by_heading <- function(x, h = 1) {
+  h_consider_set <- c(which(x %in% seq_len(h)), length(x))
+  h_loc <- c(which(x == h))
+  
+  res <- integer(length(h_loc))
+  
+  for (i in seq_along(h_loc)) {
+    is_positive_diff <- (h_consider_set - h_loc[i]) > 0
+    res[i] <- min(h_consider_set[is_positive_diff])
+  }
+  out <- ifelse(res == length(x), length(x), res - 1)
+  out
+}
+
+find_end_loc_by_heading(x2, 1)
+find_end_loc_by_heading(x2, 2)
+find_end_loc_by_heading(x2, 3)
+```
+
+### HowTo: Find Ending location of each headings
+
+
+
+
+```{r}
+(h1_loc <- c(which(x2 == 1)))
+(h2_loc <- c(which(x2 == 2)))
+(h3_loc <- c(which(x2 == 3)))
+```
+
+
+
+#### H1
+
+```{r}
+# H1
+(h1_consider_set <- c(which(x2 %in% c(1)), length(x2)))
+h1_loc
+```
+
+```{r}
+h1_consider_set - h1_loc[1]
+h1_consider_set - h1_loc[2]
+h1_consider_set - h1_loc[3]
+```
+
+```{r}
+min(h1_consider_set[(h1_consider_set - h1_loc[1]) > 0])
+min(h1_consider_set[(h1_consider_set - h1_loc[2]) > 0])
+min(h1_consider_set[(h1_consider_set - h1_loc[3]) > 0])
+```
+
+
+#### H2 
+
+```{r}
+# H2
+(h2_consider_set <- c(which(x2 %in% c(1, 2)), length(x2)))
+h2_loc
+```
+
+```{r}
+h2_consider_set - h2_loc[1]
+h2_consider_set - h2_loc[2]
+```
+
+Must choose 3
+
+```{r}
+(h2_consider_set - h2_loc[1]) > 0
+
+min(h2_consider_set[(h2_consider_set - h2_loc[1]) > 0])
+min(h2_consider_set[(h2_consider_set - h2_loc[2]) > 0])
+```
+
+#### H3
+
+```{r}
+# H3
+(h3_consider_set <- c(which(x2 %in% c(1, 2, 3)), length(x2)))
+h3_loc
+```
+
+```{r}
+h3_consider_set - h3_loc[1]
+h3_consider_set - h3_loc[2]
+
+min(h3_consider_set[(h3_consider_set - h3_loc[1]) > 0])
+min(h3_consider_set[(h3_consider_set - h3_loc[2]) > 0])
+```
+
+
