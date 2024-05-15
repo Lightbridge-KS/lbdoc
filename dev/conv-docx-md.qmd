@@ -1,0 +1,16 @@
+---
+title: "Convert Docx to Markdown"
+format: html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+here::i_am("dev/conv-docx-md.qmd")
+library(here)
+
+```
+
+```{r}
+usethis::use_r("docx_to_md")
+```
+
